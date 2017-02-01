@@ -1,0 +1,29 @@
+{
+  "name": "clinical-trials-analyzer",
+  "version": "0.0.0",
+  "description": "A tool to run ES queries against a CT dataset and output reports",
+  "private": true,
+  "bin": {
+    "clinical-trials-analyzer": "./bin/clinical-trials-analyzer"
+  },
+  "scripts": {
+    "test": "mocha -R spec"
+  },
+  "author": {
+    "name": "Bryan Pizzillo",
+    "email": "",
+    "url": "https://github.com/bryanpizzillo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bryanpizzillo/clinical-trials-analyzer"
+  },
+  "license": "MIT",
+  "bugs": "https://github.com/bryanpizzillo/clinical-trials-analyzer/issues",
+  "dependencies": {
+    "commander": "~2.0.0",
+    "autocmdr": "~0.0.7"
+  },
+  "devDependencies": {
+  }
+}
