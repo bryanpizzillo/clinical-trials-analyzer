@@ -21,9 +21,11 @@
   "license": "MIT",
   "bugs": "https://github.com/bryanpizzillo/clinical-trials-analyzer/issues",
   "dependencies": {
+    "async": "^2.1.4",
+    "async-waterfall": "^0.1.5",
+    "autocmdr": "~0.0.7",
     "commander": "~2.0.0",
-    "autocmdr": "~0.0.7"
+    "elasticsearch": "^12.1.3"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }

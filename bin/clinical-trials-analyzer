@@ -13,6 +13,7 @@ require('autocmdr/lib/help')(program);
 
 
 program
+	.option('-v --verbose', 'Should the output be verbose or not (default: false)')
 	.parse(process.argv);
 
 if (program.args.length < 1 ) {
