@@ -1,0 +1,33 @@
+{
+    "size": 0,
+    "query": {
+        "bool": { 
+            "should" : [
+                { "term": { "current_trial_status" : "active" }},
+                { "term": { "current_trial_status" : "approved" }},
+                { "term": { "current_trial_status" : "enrolling by invitation" }},
+                { "term": { "current_trial_status" : "in review" }},
+                { "term": { "current_trial_status" : "temporarily closed to accrual" }},
+                { "term": { "current_trial_status" : "temporarily closed to accrual and intervention" }}
+            ]
+        }
+    },
+    "aggs" : {
+        "interventions" : {
+            "nested" : {
+                "path" : "arms.interventions"    
+            },
+            "aggs": {
+                "arms.interventions.intervention_type": {
+                    "terms" : { "field": "arms.interventions.intervention_type", "size": 10000 },
+                    "aggs" : 
+                    {
+                        "arms.interventions.intervention_name" : {
+                            "terms" : { "field": "arms.interventions.intervention_name", "size": 10000 }
+                        }
+                    }
+                }                
+            }
+        }
+    }
+}
