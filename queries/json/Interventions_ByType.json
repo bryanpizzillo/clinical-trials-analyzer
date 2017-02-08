@@ -1,0 +1,27 @@
+{
+    "size": 0,
+    
+    "aggs" : {
+        "interventions" : {
+            "nested" : {
+                "path" : "arms.interventions"    
+            },
+            "aggs": {
+                "arms.interventions.intervention_type": {
+                    "terms" : { "field": "arms.interventions.intervention_type", "size": 10000 },
+                    "aggs" : 
+                    {
+                        "arms.interventions.intervention_name" : {
+                            "terms" : { "field": "arms.interventions.intervention_name", "size": 10000 },
+                            "aggs" : {
+                                "arms.interventions.intervention_code" : { 
+                                    "terms" : { "field": "arms.interventions.intervention_code", "size": 10000 }
+                                }
+                            }
+                        }
+                    }
+                }                
+            }
+        }
+    }
+}

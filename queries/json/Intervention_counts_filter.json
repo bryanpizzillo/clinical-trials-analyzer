@@ -1,0 +1,28 @@
+{
+    "size": 0,
+    "filter": {
+        "bool" : {
+            "must" : {
+                "nested" : {
+                    "path" : "arms.interventions",
+                    "filter" : {
+                        "bool" : {
+                            "must" : [
+                                { "term" : {"arms.interventions.intervention_type" : "drug"} },
+                                { "term" : {"arms.interventions.intervention_name" : "cyclophosphamide"} }
+                            ]
+                        }
+                    }
+                }
+            },
+            "should" : [
+                { "term": { "current_trial_status" : "active" }},
+                { "term": { "current_trial_status" : "approved" }},
+                { "term": { "current_trial_status" : "enrolling by invitation" }},
+                { "term": { "current_trial_status" : "in review" }},
+                { "term": { "current_trial_status" : "temporarily closed to accrual" }},
+                { "term": { "current_trial_status" : "temporarily closed to accrual and intervention" }}
+            ]
+        }
+    }
+}
