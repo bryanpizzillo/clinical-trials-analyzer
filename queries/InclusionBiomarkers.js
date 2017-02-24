@@ -10,68 +10,78 @@ const _ = require('lodash');
 const AggregateWorkBook = require('../lib/AggregateWorkBook');
 
 /**
- * Gets a report of the interventions (name&type) contained in all trials,
- * along with the number of all the trials with that intervention, and the
- * number of view-able trials with that intervention.
+ * Gets a report of the inclusion biomarkers contained in all trials,
+ * along with the number of all the trials with those biomarkers, and the
+ * number of view-able trials with those biomarkers.
  * 
- * @class InterventionsByType
+ * @class InclusionBiomarkers
  * @extends {BaseAggQuery}
  */
-class InterventionsByType extends BaseAggQuery {    
+class InclusionBiomarkers extends BaseAggQuery {    
 
     /**
-     * Creates an instance of ViewableInterventionsByType.
+     * Creates an instance of InclusionBiomarkers.
      * 
      * @param {any} es_index The name of the index to query
      * @param {any} es_client A valid elasticsearch client 
      * @param {any} outputFile The output file to save the results to
      * 
-     * @memberOf ViewableInterventionsByType
+     * @memberOf InclusionBiomarkers
      */
     constructor(es_index, es_client, outputFile) {
         super(es_index, es_client, outputFile);
     }
 
     /**
-     * INTERNAL: Loads the Interventions by Type query
+     * INTERNAL: Loads the Biomarkers by Type query
      * 
      * @returns
      * 
-     * @memberOf ViewableInterventionsByType
+     * @memberOf InclusionBiomarkers
      */
     _loadQuery() {
-        return require('./json/Interventions_ByType.json');
+        return require('./json/InclusionBiomarkers.json');
     }
 
     /**
-     * Extracts the interventions information from an aggregate
+     * Extracts the biomarker information from an aggregate
      * and "returns" an Array of type,name pairs using the done callback
      * 
-     * @param {any} interventionsAgg
+     * @param {any} agg
      * @param {any} done
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
-    _extractInterventions(interventionsAgg, done) {
-        var interventions = [];
+    _extractBiomarkers(agg, done) {
+        var biomarkers = [];
 
-        interventionsAgg["arms.interventions.intervention_type"].buckets.forEach((type_bucket) => {
-            //This should be something like "drug"
-            let currType = type_bucket.key;
+        agg["biomarkers.nci_thesaurus_concept_id"].buckets.forEach((bio_bucket) => {
+            //Start at the id level.
+            //This should be something like "C12345"
+            let ncitid = bio_bucket.key;
 
-            type_bucket["arms.interventions.intervention_name"].buckets.forEach((name_bucket) => {
+            //Move to the name level
+            //This should be something like "her2/neu negative"
+            //Note this assumes only one name per ID, which should be valid, but it
+            //is an assumption that should hold true
+            bio_bucket = bio_bucket["biomarkers.name"].buckets[0];
+            let bioName = bio_bucket.key;
 
-                let code = "UNK";
+            if (bio_bucket["biomarkers.assay_purpose"].buckets.length < 1) {
+                return; //Skip this item as it is not for inclusion criteria
+            }
 
-                if ( name_bucket["arms.interventions.intervention_code"] ) {
-                    code = name_bucket["arms.interventions.intervention_code"].buckets[0].key;
-                }
+            let purpose_counts = 0;
 
-                interventions.push([code, currType, name_bucket.key]);
+            bio_bucket["biomarkers.assay_purpose"].buckets.forEach((purpose_bucket) => {
+
+                purpose_counts += purpose_bucket["doc_count"];                
             })
+
+            biomarkers.push([ncitid, bioName, purpose_counts]);
         });
 
-        done(false, interventions);
+        done(false, biomarkers);
     }
     
     /**
@@ -81,23 +91,23 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} interventions
      * @param {any} done
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
     _generateWorkbook(interventions, done) {
 
         let wb = new AggregateWorkBook();
-        wb.addSheet('Interventions');
+        wb.addSheet('Biomarkers');
 
-        wb.addHeadersRow('Interventions', [
-            'arms.interventions.intervention_code',
-            'arms.interventions.intervention_type',
-            'arms.interventions.intervention_name',
-            'Viewable Count',
-            'All Count'
+        wb.addHeadersRow('Biomarkers', [
+            'biomarkers.nci_thesaurus_concept_id',
+            'biomarkers.name',
+            'Instance Count across All Trials',
+            'Viewable Trial Count',
+            'All Trial Count'
         ]);        
 
         interventions.forEach((row) => {
-            wb.addRowToSheet('Interventions', row);
+            wb.addRowToSheet('Biomarkers', row);
         });
 
         done(false, wb);
@@ -109,7 +119,7 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} es_results Elasticsearch results from a query - with 1 aggregate
      * @param {any} callback A completion callback passing error and an AggregateWorkBook
      * 
-     * @memberOf ViewableInterventionsByType
+     * @memberOf InclusionBiomarkers
      */
     _processAggregates(es_results, callback) {
         console.log("Processing Aggregates");
@@ -119,11 +129,11 @@ class InterventionsByType extends BaseAggQuery {
             callback(new Error("There was no interventions aggregate."), false );
         }
 
-        var interventionsAgg = es_results.aggregations['interventions'];        
+        var agg = es_results.aggregations['biomarkers'];        
 
         //Extract
         async.waterfall([            
-            (next) => { this._extractInterventions(interventionsAgg, next) },
+            (next) => { this._extractBiomarkers(agg, next) },
             //Parrallel Add trials
             (res, next) => {
                 async.map(
@@ -143,20 +153,20 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} row An array of [ C Code, Term Type, and Term Name ]
      * @param {any} done A callback when finished. (err, results)
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
     _addTrialCountsToRow(row, done) {
 
         let newRow = row.slice();
 
         async.waterfall([
-            (next) => { this._getViewableTrialCount(row[1], row[2], next) },
+            (next) => { this._getViewableTrialCount(row[0], next) },
             (res, next) => { 
                 //set viewable count
                 newRow.push(res);
                 next(false,false)
             },
-            (res, next) => { this._getAllTrialCount(row[1], row[2], next) },
+            (res, next) => { this._getAllTrialCount(row[0], next) },
             (res, next) => { 
                 //set all count
                 newRow.push(res);                
@@ -178,9 +188,9 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} name The name of the intervention
      * @param {any} done A completion callback (err, result)
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
-    _getViewableTrialCount(type, name, done) {
+    _getViewableTrialCount(nciid, done) {
         this.client.count(
             {
                 index: this.index,
@@ -188,7 +198,7 @@ class InterventionsByType extends BaseAggQuery {
                     size: 0,
                     filter: {
                         bool: {
-                            must: this._getNestedTypeNameFilter(type, name),
+                            must: this._getNestedBiomarkerIDFilter(nciid),
                             should: this._getViewAbleTrialsFilterArray()
                         }
                     }
@@ -215,9 +225,9 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} name The name of the intervention
      * @param {any} done A completion callback (err, result)
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
-    _getAllTrialCount(type, name, done) {
+    _getAllTrialCount(nciid, done) {
         this.client.count(
             {
                 index: this.index,
@@ -225,7 +235,7 @@ class InterventionsByType extends BaseAggQuery {
                     size: 0,
                     filter: {
                         bool: {
-                            must: this._getNestedTypeNameFilter(type, name)
+                            must: this._getNestedBiomarkerIDFilter(nciid)
                         }
                     }
                 }
@@ -247,18 +257,17 @@ class InterventionsByType extends BaseAggQuery {
      * @param {any} name The name of the intervention
      * @returns
      * 
-     * @memberOf InterventionsByType
+     * @memberOf InclusionBiomarkers
      */
-    _getNestedTypeNameFilter(type, name) {
+    _getNestedBiomarkerIDFilter(id, name) {
         return {
             "nested" : {
-                "path" : "arms.interventions",
+                "path" : "biomarkers",
                 "score_mode" : "avg",
                 "filter" : {
                     "bool" : {
                         "must" : [
-                            { "term" : {"arms.interventions.intervention_type" : type } },
-                            { "term" : {"arms.interventions.intervention_name" : name } }
+                            { "term" : {"biomarkers.nci_thesaurus_concept_id" : id } }
                         ]
                     }
                 }
@@ -269,4 +278,4 @@ class InterventionsByType extends BaseAggQuery {
 }
 
 //This exposes the command for use by autocmd.
-module.exports = InterventionsByType;
+module.exports = InclusionBiomarkers;

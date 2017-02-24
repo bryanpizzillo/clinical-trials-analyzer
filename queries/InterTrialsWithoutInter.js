@@ -10,14 +10,12 @@ const _ = require('lodash');
 const AggregateWorkBook = require('../lib/AggregateWorkBook');
 
 /**
- * Gets a report of the interventions (name&type) contained in all trials,
- * along with the number of all the trials with that intervention, and the
- * number of view-able trials with that intervention.
+ * Gets a report of the interventional trials without interventions.
  * 
  * @class InterventionsByType
  * @extends {BaseAggQuery}
  */
-class InterventionsByType extends BaseAggQuery {    
+class InterTrialsWithoutInter extends BaseAggQuery {    
 
     /**
      * Creates an instance of ViewableInterventionsByType.

@@ -1,0 +1,42 @@
+{
+    "size": 0,
+    "query" : {
+        "bool" : {
+            "must" : [ 
+                { "exists" : { "field" : "biomarkers" } }
+            ]            
+        }
+    },
+    "aggs": {
+        "biomarkers" : {
+            "nested" : {
+                "path" : "biomarkers"    
+            },
+            "aggs": {
+                "biomarkers.nci_thesaurus_concept_id" : {
+                    "terms" : {
+                        "field" : "biomarkers.nci_thesaurus_concept_id",
+                        "size" : 10000
+                    },
+                    "aggs" : {
+                        "biomarkers.name" : {
+                            "terms" : {
+                                "field" : "biomarkers.name",
+                                "size" : 10000
+                            },
+                            "aggs" : {
+                                "biomarkers.assay_purpose": {
+                                    "terms" : {
+                                        "field" : "biomarkers.assay_purpose",
+                                        "include" : ".*inclusion.*",
+                                        "size" : 10000
+                                    }
+                                }                        
+                            }
+                        }
+                    }                
+                }
+            }
+        }        
+    }
+}
